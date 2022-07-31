@@ -1,6 +1,6 @@
 
 # Typeorm Transactional
-
+[![npm version](http://img.shields.io/npm/v/typeorm-transactional.svg?style=flat)](https://npmjs.org/package/typeorm-transactional "View this project on npm")
 
 ## It's a fork of [typeorm-transactional-cls-hooked](https://github.com/odavid/typeorm-transactional-cls-hooked) for new versions of TypeORM.
 
