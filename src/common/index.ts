@@ -8,12 +8,23 @@ import {
   TYPEORM_HOOK_NAME,
 } from './constants';
 import { EventEmitter } from 'events';
+import { TypeOrmUpdatedPatchError } from '../errors/typeorm-updated-patch';
 
 export type DataSourceName = string | 'default';
 
 interface AddTransactionalDataSourceInput {
-  name: string;
+  /**
+   * Custom name for data source
+   */
+  name?: DataSourceName;
   dataSource: DataSource;
+  /**
+   * Whether to "patch" some `DataSource` methods to support their usage in transactions (default `true`).
+   *
+   * If you don't need to use `DataSource` methods in transactions and you only work with `Repositories`,
+   * you can set this flag to `false`.
+   */
+  patch?: boolean;
 }
 
 /**
@@ -41,14 +52,59 @@ export const setEntityManagerByDataSourceName = (
   context.set(TYPEORM_DATA_SOURCE_NAME_PREFIX + name, entityManager);
 };
 
-const getEntityManagerInContext = (
-  dataSourceName: DataSourceName,
-  entityManager: EntityManager,
-) => {
+const getEntityManagerInContext = (dataSourceName: DataSourceName) => {
   const context = getTransactionalContext();
-  if (!context || !context.active) return entityManager;
+  if (!context || !context.active) return null;
 
-  return getEntityManagerByDataSourceName(context, dataSourceName) || entityManager;
+  return getEntityManagerByDataSourceName(context, dataSourceName);
+};
+
+const patchDataSource = (dataSource: DataSource) => {
+  let originalManager = dataSource.manager;
+
+  Object.defineProperty(dataSource, 'manager', {
+    get() {
+      return (
+        getEntityManagerInContext(this[TYPEORM_DATA_SOURCE_NAME] as DataSourceName) ||
+        originalManager
+      );
+    },
+    set(manager: EntityManager) {
+      originalManager = manager;
+    },
+  });
+
+  const originalQuery = DataSource.prototype.query;
+  if (originalQuery.length !== 3) {
+    throw new TypeOrmUpdatedPatchError();
+  }
+
+  dataSource.query = function (...args: unknown[]) {
+    args[2] = args[2] || this.manager?.queryRunner;
+
+    return originalQuery.apply(this, args);
+  };
+
+  const originalCreateQueryBuilder = DataSource.prototype.createQueryBuilder;
+  if (originalCreateQueryBuilder.length !== 3) {
+    throw new TypeOrmUpdatedPatchError();
+  }
+
+  dataSource.createQueryBuilder = function (...args: unknown[]) {
+    if (args.length === 0) {
+      return originalCreateQueryBuilder.apply(this, [this.manager?.queryRunner]);
+    }
+
+    args[2] = args[2] || this.manager?.queryRunner;
+
+    return originalCreateQueryBuilder.apply(this, args);
+  };
+
+  dataSource.transaction = function (...args: unknown[]) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    return originalManager.transaction(...args);
+  };
 };
 
 export const initializeTransactionalContext = () => {
@@ -68,11 +124,12 @@ export const initializeTransactionalContext = () => {
        */
       Object.defineProperty(repository, 'manager', {
         get() {
-          return getEntityManagerInContext(
-            this[TYPEORM_ENTITY_MANAGER_NAME].connection[
-              TYPEORM_DATA_SOURCE_NAME
-            ] as DataSourceName,
-            this[TYPEORM_ENTITY_MANAGER_NAME] as EntityManager,
+          return (
+            getEntityManagerInContext(
+              this[TYPEORM_ENTITY_MANAGER_NAME].connection[
+                TYPEORM_DATA_SOURCE_NAME
+              ] as DataSourceName,
+            ) || this[TYPEORM_ENTITY_MANAGER_NAME]
           );
         },
         set(manager: EntityManager | undefined) {
@@ -89,12 +146,16 @@ export const initializeTransactionalContext = () => {
 
 export const addTransactionalDataSource = (input: DataSource | AddTransactionalDataSourceInput) => {
   if (input instanceof DataSource) {
-    input = { name: 'default', dataSource: input };
+    input = { name: 'default', dataSource: input, patch: true };
   }
 
-  const { name, dataSource } = input;
+  const { name = 'default', dataSource, patch = true } = input;
   if (dataSources.has(name)) {
     throw new Error(`DataSource with name "${name}" has already added.`);
+  }
+
+  if (patch) {
+    patchDataSource(dataSource);
   }
 
   dataSources.set(name, dataSource);

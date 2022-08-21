@@ -1,4 +1,8 @@
-export { initializeTransactionalContext, addTransactionalDataSource } from './common';
+export {
+  initializeTransactionalContext,
+  addTransactionalDataSource,
+  getDataSourceByName,
+} from './common';
 export {
   runOnTransactionCommit,
   runOnTransactionRollback,

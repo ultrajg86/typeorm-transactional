@@ -7,6 +7,8 @@
 
 A `Transactional` Method Decorator for [typeorm](http://typeorm.io/) that uses [cls-hooked](https://www.npmjs.com/package/cls-hooked) to handle and propagate transactions between different repositories and service methods.
 
+See [Changelog](#CHANGELOG.md)
+
 - [Typeorm Transactional](#typeorm-transactional)
   - [Installation](#installation)
   - [Initialization](#initialization)
@@ -178,6 +180,23 @@ export class PostService {
 }
 ```
 
+You can also use `DataSource`/`EntityManager` objects together with repositories in transactions:
+
+```typescript
+export class PostService {
+  constructor(readonly repository: PostRepository, readonly dataSource: DataSource)
+
+  @Transactional() // Will open a transaction if one doesn't already exist
+  async createAndGetPost(id, message): Promise<Post> {
+    const post = this.repository.create({ id, message })
+
+    await this.repository.save(post)
+
+    return dataSource.createQueryBuilder(Post, 'p').where('id = :id', id).getOne();
+  }
+}
+```
+
 ## Data Sources
 
 In new versions of `TypeORM` the `name` property in `Connection` / `DataSource` is deprecated, so to work conveniently with multiple `DataSource` the function  `addTransactionalDataSource` allows you to specify custom the name:
@@ -232,12 +251,12 @@ The following isolation level options can be specified:
 
 ## Hooks
 
-Because you hand over control of the transaction creation to this library, there is no way for you to know whether or not the current transaction was sucessfully persisted to the database.
+Because you hand over control of the transaction creation to this library, there is no way for you to know whether or not the current transaction was successfully persisted to the database.
 
 To circumvent that, we expose three helper methods that allow you to hook into the transaction lifecycle and take appropriate action after a commit/rollback.
 
-- `runOnTransactionCommit(cb)` takes a callback to be executed after the current transaction was sucessfully committed
-- `runOnTransactionRollback(cb)` takes a callback to be executed after the current transaction rolls back. The callback gets the error that initiated the roolback as a parameter.
+- `runOnTransactionCommit(cb)` takes a callback to be executed after the current transaction was successfully committed
+- `runOnTransactionRollback(cb)` takes a callback to be executed after the current transaction rolls back. The callback gets the error that initiated the rollback as a parameter.
 - `runOnTransactionComplete(cb)` takes a callback to be executed at the completion of the current transactional context. If there was an error, it gets passed as an argument.
 
 
@@ -284,7 +303,7 @@ Repositories, services, etc. can be mocked as usual.
 
 - `connectionName`-  DataSource` name to use for this transactional context  ([the data sources](#data-sources))
 - `isolationLevel`- isolation level for transactional context ([isolation levels](#isolation-levels) )
-- `propagation`-  propagation behaviours for nest transactional contexts ([propagation behaviours](#transaction-propagation))
+- `propagation`-  propagation behaviors for nest transactional contexts ([propagation behaviors](#transaction-propagation))
 
 ### initializeTransactionalContext(): void
 
@@ -301,7 +320,7 @@ Add TypeORM `DataSource` to transactional context.
 ```typescript
 addTransactionalDataSource(new DataSource(...));
 
-addTransactionalDataSource({ name: 'default', dataSource: new DataSource(...) });
+addTransactionalDataSource({ name: 'default', dataSource: new DataSource(...), patch: true });
 ```
 
 ### runInTransaction(fn: Callback, options?: Options): Promise<...>
@@ -346,7 +365,7 @@ await updateUser();
 
 ### runOnTransactionCommit(cb: Callback): void
 
-Takes a callback to be executed after the current transaction was sucessfully committed
+Takes a callback to be executed after the current transaction was successfully committed
 
 ```typescript
   @Transactional()
@@ -362,7 +381,7 @@ Takes a callback to be executed after the current transaction was sucessfully co
 
 ### runOnTransactionRollback(cb: Callback): void
 
-Takes a callback to be executed after the current transaction rolls back. The callback gets the error that initiated the roolback as a parameter.
+Takes a callback to be executed after the current transaction rolls back. The callback gets the error that initiated the rollback as a parameter.
 
 ```typescript
   @Transactional()
