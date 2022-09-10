@@ -168,6 +168,8 @@ export const addTransactionalDataSource = (input: DataSource | AddTransactionalD
 
 export const getDataSourceByName = (name: DataSourceName) => dataSources.get(name);
 
+export const deleteDataSourceByName = (name: DataSourceName) => dataSources.delete(name);
+
 export const getHookInContext = (context: Namespace | undefined) =>
   context?.get(TYPEORM_HOOK_NAME) as EventEmitter | null;
 
