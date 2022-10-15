@@ -10,6 +10,7 @@ A `Transactional` Method Decorator for [typeorm](http://typeorm.io/) that uses [
 See [Changelog](#CHANGELOG.md)
 
 - [Typeorm Transactional](#typeorm-transactional)
+  - [It's a fork of typeorm-transactional-cls-hooked for new versions of TypeORM.](#its-a-fork-of-typeorm-transactional-cls-hooked-for-new-versions-of-typeorm)
   - [Installation](#installation)
   - [Initialization](#initialization)
   - [Usage](#usage)
@@ -20,15 +21,15 @@ See [Changelog](#CHANGELOG.md)
   - [Hooks](#hooks)
   - [Unit Test Mocking](#unit-test-mocking)
   - [API](#api)
-    - [Options](#options)
-    - [initializeTransactionalContext(): void](#initializetransactionalcontext-void)
+    - [Library Options](#library-options)
+    - [Transaction Options](#transaction-options)
+    - [initializeTransactionalContext(options): void](#initializetransactionalcontext-void)
     - [addTransactionalDataSource(input): DataSource](#addtransactionaldatasourceinput-datasource)
     - [runInTransaction(fn: Callback, options?: Options): Promise<...>](#runintransactionfn-callback-options-options-promise)
     - [wrapInTransaction(fn: Callback, options?: Options): WrappedFunction](#wrapintransactionfn-callback-options-options-wrappedfunction)
     - [runOnTransactionCommit(cb: Callback): void](#runontransactioncommitcb-callback-void)
     - [runOnTransactionRollback(cb: Callback): void](#runontransactionrollbackcb-callback-void)
     - [runOnTransactionComplete(cb: Callback): void](#runontransactioncompletecb-callback-void)
-
 ## Installation
 
 ```shell
@@ -291,7 +292,17 @@ Repositories, services, etc. can be mocked as usual.
 
 ## API
 
-### Options
+### Library Options
+
+```typescript
+{
+  maxHookHandlers?: number
+}
+```
+
+- `maxHookHandlers` - Controls how many hooks (`commit`, `rollback`, `complete`) can be used simultaneously. If you exceed the number of hooks of same type, you get a warning. This is a useful to find possible memory leaks. You can set this options to `0` or `Infinity` to indicate an unlimited number of listeners. By default, it's `10`.
+
+### Transaction Options
 
 ```typescript
 {
@@ -305,13 +316,15 @@ Repositories, services, etc. can be mocked as usual.
 - `isolationLevel`- isolation level for transactional context ([isolation levels](#isolation-levels) )
 - `propagation`-  propagation behaviors for nest transactional contexts ([propagation behaviors](#transaction-propagation))
 
-### initializeTransactionalContext(): void
+### initializeTransactionalContext(options): void
 
 Initialize `cls-hooked` namespace.
 
 ```typescript
-initializeTransactionalContext();
+initializeTransactionalContext(options?: TypeormTransactionalOptions);
 ```
+
+Optionally, you can set some [options](#library-options).
 
 ### addTransactionalDataSource(input): DataSource
 

@@ -1,7 +1,12 @@
 import { EventEmitter } from 'events';
 import { Namespace } from 'cls-hooked';
 
-import { getHookInContext, getTransactionalContext, setHookInContext } from '../common';
+import {
+  getHookInContext,
+  getTransactionalContext,
+  getTransactionalOptions,
+  setHookInContext,
+} from '../common';
 
 export const getTransactionalContextHook = () => {
   const context = getTransactionalContext();
@@ -39,8 +44,12 @@ export const runAndTriggerHooks = async (hook: EventEmitter, cb: () => unknown) 
 };
 
 export const createEventEmitterInNewContext = (context: Namespace) => {
+  const options = getTransactionalOptions();
+
   return context.runAndReturn(() => {
     const emitter = new EventEmitter();
+    emitter.setMaxListeners(options.maxHookHandlers);
+
     context.bindEmitter(emitter);
     return emitter;
   });
