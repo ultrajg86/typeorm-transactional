@@ -9,8 +9,28 @@ import {
 } from './constants';
 import { EventEmitter } from 'events';
 import { TypeOrmUpdatedPatchError } from '../errors/typeorm-updated-patch';
+import { isDataSource } from '../utils';
 
 export type DataSourceName = string | 'default';
+
+/**
+ * Options to adjust and manage this library
+ */
+interface TypeormTransactionalOptions {
+  /**
+   * Controls how many hooks (`commit`, `rollback`, `complete`) can be used simultaneously.
+   * If you exceed the number of hooks of same type, you get a warning. This is a useful to find possible memory leaks.
+   * You can set this options to `0` or `Infinity` to indicate an unlimited number of listeners.
+   */
+  maxHookHandlers: number;
+}
+
+/**
+ * Global data and state
+ */
+interface TypeormTransactionalData {
+  options: TypeormTransactionalOptions;
+}
 
 interface AddTransactionalDataSourceInput {
   /**
@@ -33,6 +53,15 @@ interface AddTransactionalDataSourceInput {
  * The property "name" in the `DataSource` is deprecated, so we add own names to distinguish data sources.
  */
 const dataSources = new Map<DataSourceName, DataSource>();
+
+/**
+ * Default library's state
+ */
+const data: TypeormTransactionalData = {
+  options: {
+    maxHookHandlers: 10,
+  },
+};
 
 export const getTransactionalContext = () => getNamespace(NAMESPACE_NAME);
 
@@ -107,7 +136,15 @@ const patchDataSource = (dataSource: DataSource) => {
   };
 };
 
-export const initializeTransactionalContext = () => {
+const setTransactionalOptions = (options?: Partial<TypeormTransactionalOptions>) => {
+  data.options = { ...data.options, ...(options || {}) };
+};
+
+export const getTransactionalOptions = () => data.options;
+
+export const initializeTransactionalContext = (options?: Partial<TypeormTransactionalOptions>) => {
+  setTransactionalOptions(options);
+
   const originalGetRepository = EntityManager.prototype.getRepository;
 
   EntityManager.prototype.getRepository = function (...args: unknown[]) {
@@ -145,7 +182,7 @@ export const initializeTransactionalContext = () => {
 };
 
 export const addTransactionalDataSource = (input: DataSource | AddTransactionalDataSourceInput) => {
-  if (input instanceof DataSource) {
+  if (isDataSource(input)) {
     input = { name: 'default', dataSource: input, patch: true };
   }
 
