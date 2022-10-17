@@ -52,7 +52,7 @@ describe('Common tests', () => {
     return result?.is_transaction || false;
   }
 
-  async function isQueryBuilderWithEntityTransactionActive(queryBuilder: QueryBuilder<unknown>) {
+  async function isQueryBuilderWithEntityTransactionActive(queryBuilder: QueryBuilder<any>) {
     await queryBuilder.delete().from(Post).where('1 = 1').execute();
 
     await queryBuilder.insert().into(Post).values({ message }).execute();
