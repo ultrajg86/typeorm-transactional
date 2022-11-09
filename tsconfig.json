@@ -5,7 +5,7 @@
     "lib": ["es5", "es6", "dom"],
     "declaration": true,
     "noImplicitAny": true,
-    "removeComments": true,
+    "removeComments": false,
     "noLib": false,
     "strictNullChecks": true,
     "allowSyntheticDefaultImports": true,
