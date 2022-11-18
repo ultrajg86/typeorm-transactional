@@ -1,5 +1,5 @@
 import { createNamespace, getNamespace, Namespace } from 'cls-hooked';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
   NAMESPACE_NAME,
   TYPEORM_DATA_SOURCE_NAME,
@@ -145,38 +145,50 @@ export const getTransactionalOptions = () => data.options;
 export const initializeTransactionalContext = (options?: Partial<TypeormTransactionalOptions>) => {
   setTransactionalOptions(options);
 
-  const originalGetRepository = EntityManager.prototype.getRepository;
-
-  EntityManager.prototype.getRepository = function (...args: unknown[]) {
-    const repository = originalGetRepository.apply(this, args);
-
-    if (!(TYPEORM_ENTITY_MANAGER_NAME in repository)) {
-      /**
-       * Store current manager
-       */
-      repository[TYPEORM_ENTITY_MANAGER_NAME] = repository.manager;
-
-      /**
-       * Patch repository object
-       */
-      Object.defineProperty(repository, 'manager', {
-        get() {
-          return (
-            getEntityManagerInContext(
-              this[TYPEORM_ENTITY_MANAGER_NAME].connection[
-                TYPEORM_DATA_SOURCE_NAME
-              ] as DataSourceName,
-            ) || this[TYPEORM_ENTITY_MANAGER_NAME]
-          );
-        },
-        set(manager: EntityManager | undefined) {
-          this[TYPEORM_ENTITY_MANAGER_NAME] = manager;
-        },
-      });
-    }
-
-    return repository;
+  const patchManager = (repositoryType: unknown) => {
+    Object.defineProperty(repositoryType, 'manager', {
+      get() {
+        return (
+          getEntityManagerInContext(
+            this[TYPEORM_ENTITY_MANAGER_NAME].connection[
+              TYPEORM_DATA_SOURCE_NAME
+            ] as DataSourceName,
+          ) || this[TYPEORM_ENTITY_MANAGER_NAME]
+        );
+      },
+      set(manager: EntityManager | undefined) {
+        this[TYPEORM_ENTITY_MANAGER_NAME] = manager;
+      },
+    });
   };
+
+  const getRepository = (originalFn: (args: unknown) => unknown) => {
+    return function patchRepository(...args: unknown[]) {
+      const repository = originalFn.apply(this, args);
+
+      if (!(TYPEORM_ENTITY_MANAGER_NAME in repository)) {
+        /**
+         * Store current manager
+         */
+        repository[TYPEORM_ENTITY_MANAGER_NAME] = repository.manager;
+
+        /**
+         * Patch repository object
+         */
+        patchManager(repository);
+      }
+
+      return repository;
+    };
+  };
+
+  const originalGetRepository = EntityManager.prototype.getRepository;
+  const originalExtend = Repository.prototype.extend;
+
+  EntityManager.prototype.getRepository = getRepository(originalGetRepository);
+  Repository.prototype.extend = getRepository(originalExtend);
+
+  patchManager(Repository.prototype);
 
   return createNamespace(NAMESPACE_NAME) || getNamespace(NAMESPACE_NAME);
 };
