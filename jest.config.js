@@ -5,4 +5,11 @@ module.exports = {
   coverageDirectory: './coverage',
   coverageReporters: ['json', 'html'],
   testEnvironment: 'node',
+  globals: {
+    'ts-jest': {
+      tsconfig: {
+        target: 'ES6',
+      },
+    },
+  },
 };

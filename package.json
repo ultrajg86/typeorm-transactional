@@ -35,7 +35,7 @@
     "build": "npm run clean && tsc -p tsconfig.json",
     "setup-test-db": "npm run teardown-test-db; docker-compose -f tests/docker-compose.yaml up -d && sleep 3",
     "teardown-test-db": "docker-compose -f tests/docker-compose.yaml down --remove-orphans -v",
-    "test": "npm run setup-test-db && jest"
+    "test": "npm run setup-test-db && jest --runInBand"
   },
   "dependencies": {
     "@types/cls-hooked": "^4.3.3",
@@ -49,17 +49,17 @@
     "@types/jest": "^28.1.6",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
+    "eslint": "^8.20.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
     "jest": "^28.1.3",
     "pg": "^8.7.3",
     "prettier": "^2.7.1",
     "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.5.6",
     "ts-jest": "^28.0.7",
-    "typeorm": "^0.3.7",
-    "typescript": "^4.7.4",
-    "eslint": "^8.20.0",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-prettier": "^4.2.1",
-    "rxjs": "^7.5.6"
+    "typeorm": "^0.3.10",
+    "typescript": "^4.7.4"
   },
   "peerDependencies": {
     "reflect-metadata": ">= 0.1.12",

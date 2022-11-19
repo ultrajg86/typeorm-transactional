@@ -7,4 +7,7 @@ export class Post {
 
   @Column()
   message: string;
+
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  slug: string | null;
 }
