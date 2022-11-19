@@ -159,6 +159,8 @@ class AppModule {}
 
 Unlike `typeorm-transactional-cls-hooked`, you do not need to use `BaseRepository`or otherwise define repositories.
 
+You can also use this library with custom TypeORM repositories. You can read more about them [here](https://stackoverflow.com/a/72887316/19150323) and [here](https://orkhan.gitbook.io/typeorm/docs/custom-repository).
+
 **NOTE**:  You can [add](#data-sources) multiple `DataSource` if you need it
 
 

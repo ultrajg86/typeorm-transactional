@@ -6,3 +6,8 @@
 
 - Feature: add maximum hook handlers options [#13](https://github.com/Aliheym/typeorm-transactional/issues/13)
 - Fix: improve checks to support newest TypeORM versions [#15](https://github.com/Aliheym/typeorm-transactional/issues/9)
+
+# 0.4.0
+
+- Feature: add support for TypeORM custom and extend repositories [#19](https://github.com/Aliheym/typeorm-transactional/issues/19). Thanks this PR [#14](https://github.com/Aliheym/typeorm-transactional/pull/14).
+- Chore: keep comments/docs [#17](https://github.com/Aliheym/typeorm-transactional/issues/17). Thanks this PR [#18](https://github.com/Aliheym/typeorm-transactional/pull/18).
