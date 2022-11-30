@@ -14,7 +14,7 @@ import { TransactionalError } from '../errors/transactional';
 
 export interface WrapInTransactionOptions {
   /**
-   * For compability with `typeorm-transactional-cls-hooked` we use `connectionName`
+   * For compatibility with `typeorm-transactional-cls-hooked` we use `connectionName`
    */
   connectionName?: DataSourceName;
 
