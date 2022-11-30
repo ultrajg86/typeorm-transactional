@@ -25,7 +25,10 @@ export interface WrapInTransactionOptions {
   name?: string | symbol;
 }
 
-export const wrapInTransaction = (fn: () => unknown, options?: WrapInTransactionOptions) => {
+export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => ReturnType<Fn>>(
+  fn: Fn,
+  options?: WrapInTransactionOptions,
+) => {
   // eslint-disable-next-line func-style
   function wrapper(this: unknown, ...args: unknown[]) {
     const context = getTransactionalContext();
@@ -125,5 +128,5 @@ export const wrapInTransaction = (fn: () => unknown, options?: WrapInTransaction
     });
   }
 
-  return wrapper;
+  return wrapper as Fn;
 };
