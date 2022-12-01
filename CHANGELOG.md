@@ -11,3 +11,7 @@
 
 - Feature: add support for TypeORM custom and extend repositories [#19](https://github.com/Aliheym/typeorm-transactional/issues/19). Thanks this PR [#14](https://github.com/Aliheym/typeorm-transactional/pull/14).
 - Chore: keep comments/docs [#17](https://github.com/Aliheym/typeorm-transactional/issues/17). Thanks this PR [#18](https://github.com/Aliheym/typeorm-transactional/pull/18).
+
+# 0.4.1
+
+- Feature: wrapInTransaction infer to the original function. Thanks this PR [#21](https://github.com/Aliheym/typeorm-transactional/pull/21).
