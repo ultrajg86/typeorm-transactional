@@ -92,6 +92,7 @@ const patchDataSource = (dataSource: DataSource) => {
   let originalManager = dataSource.manager;
 
   Object.defineProperty(dataSource, 'manager', {
+    configurable: true,
     get() {
       return (
         getEntityManagerInContext(this[TYPEORM_DATA_SOURCE_NAME] as DataSourceName) ||
@@ -147,6 +148,7 @@ export const initializeTransactionalContext = (options?: Partial<TypeormTransact
 
   const patchManager = (repositoryType: unknown) => {
     Object.defineProperty(repositoryType, 'manager', {
+      configurable: true,
       get() {
         return (
           getEntityManagerInContext(
