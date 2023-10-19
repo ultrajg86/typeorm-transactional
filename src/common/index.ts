@@ -201,7 +201,7 @@ export const initializeTransactionalContext = (options?: Partial<TypeormTransact
   return storage.create(storageDriver);
 };
 
-export const addTransactionalDataSource = (input: DataSource | AddTransactionalDataSourceInput) => {
+export const addTransactionalDataSource = (input: AddTransactionalDataSourceInput | DataSource) => {
   if (isDataSource(input)) {
     input = { name: 'default', dataSource: input, patch: true };
   }
