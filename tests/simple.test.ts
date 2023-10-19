@@ -8,6 +8,7 @@ import {
   runOnTransactionCommit,
   runOnTransactionComplete,
   runOnTransactionRollback,
+  StorageDriver,
   TransactionalError,
 } from '../src';
 
@@ -30,7 +31,13 @@ const dataSource: DataSource = new DataSource({
   synchronize: true,
 });
 
-initializeTransactionalContext();
+const storageDriver =
+  process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
+    ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
+    : StorageDriver.CLS_HOOKED;
+
+initializeTransactionalContext({ storageDriver });
+
 addTransactionalDataSource(dataSource);
 
 beforeAll(async () => {

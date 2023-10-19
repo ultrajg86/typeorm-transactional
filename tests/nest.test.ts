@@ -6,7 +6,7 @@ import { User } from './entities/User.entity';
 import { UserReaderService } from './services/user-reader.service';
 import { UserWriterService } from './services/user-writer.service';
 
-import { initializeTransactionalContext, addTransactionalDataSource } from '../src';
+import { initializeTransactionalContext, addTransactionalDataSource, StorageDriver } from '../src';
 
 describe('Integration with Nest.js', () => {
   let app: TestingModule;
@@ -17,7 +17,12 @@ describe('Integration with Nest.js', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
-    initializeTransactionalContext();
+    const storageDriver =
+      process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
+        ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
+        : StorageDriver.CLS_HOOKED;
+
+    initializeTransactionalContext({ storageDriver });
 
     app = await Test.createTestingModule({
       imports: [

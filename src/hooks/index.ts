@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events';
-import { Namespace } from 'cls-hooked';
 
 import {
   getHookInContext,
@@ -7,6 +6,7 @@ import {
   getTransactionalOptions,
   setHookInContext,
 } from '../common';
+import { StorageDriver } from '../storage/driver/interface';
 
 export const getTransactionalContextHook = () => {
   const context = getTransactionalContext();
@@ -43,22 +43,18 @@ export const runAndTriggerHooks = async (hook: EventEmitter, cb: () => unknown) 
   }
 };
 
-export const createEventEmitterInNewContext = (context: Namespace) => {
+export const createEventEmitterInNewContext = (context: StorageDriver) => {
   const options = getTransactionalOptions();
 
-  return context.runAndReturn(() => {
-    const emitter = new EventEmitter();
-    emitter.setMaxListeners(options.maxHookHandlers);
-
-    context.bindEmitter(emitter);
-    return emitter;
-  });
+  const emitter = new EventEmitter();
+  emitter.setMaxListeners(options.maxHookHandlers);
+  return emitter;
 };
 
-export const runInNewHookContext = async (context: Namespace, cb: () => unknown) => {
+export const runInNewHookContext = async (context: StorageDriver, cb: () => unknown) => {
   const hook = createEventEmitterInNewContext(context);
 
-  return await context.runAndReturn(() => {
+  return await context.run(() => {
     setHookInContext(context, hook);
 
     return runAndTriggerHooks(hook, cb);
