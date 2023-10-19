@@ -15,3 +15,9 @@
 # 0.4.1
 
 - Feature: wrapInTransaction infer to the original function. Thanks this PR [#21](https://github.com/Aliheym/typeorm-transactional/pull/21).
+
+# 0.5.0
+
+- Feature: add [Async Local Storage](https://nodejs.org/api/async_hooks.html#class-asynclocalstorage) support ([#39](https://github.com/Aliheym/typeorm-transactional/pull/39)).
+- Refactor: remove unnecessary patch ([#29](https://github.com/Aliheym/typeorm-transactional/pull/29)).
+- Refactor: improve the tests for all use cases.
