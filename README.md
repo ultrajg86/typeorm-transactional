@@ -13,7 +13,6 @@ See [Changelog](#CHANGELOG.md)
   - [It's a fork of typeorm-transactional-cls-hooked for new versions of TypeORM.](#its-a-fork-of-typeorm-transactional-cls-hooked-for-new-versions-of-typeorm)
   - [Installation](#installation)
   - [Initialization](#initialization)
-  - [Usage](#usage)
   - [Using Transactional Decorator](#using-transactional-decorator)
   - [Data Sources](#data-sources)
   - [Transaction Propagation](#transaction-propagation)
@@ -57,9 +56,10 @@ yarn add typeorm reflect-metadata
 In order to use it, you will first need to initialize the transactional context before your application is started
 
 ```typescript
-import { initializeTransactionalContext } from 'typeorm-transactional';
+import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
 
-initializeTransactionalContext()
+initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
+```
 ...
 app = express()
 ...
@@ -81,7 +81,7 @@ import { DataSource } from 'typeorm';
 import { initializeTransactionalContext, addTransactionalDataSource, StorageDriver } from 'typeorm-transactional';
 ...
 const dataSource = new DataSource({
-	type: 'postgres',
+	  type: 'postgres',
     host: 'localhost',
     port: 5435,
     username: 'postgres',
@@ -89,7 +89,7 @@ const dataSource = new DataSource({
 });
 ...
 
-initializeTransactionalContext({ storageDriver: StorageDriver.ASYNC_LOCAL_STORAGE });
+initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
 addTransactionalDataSource(dataSource);
 
 ...
@@ -101,12 +101,12 @@ Example for `Nest.js`:
 // main.ts
 
 import { NestFactory } from '@nestjs/core';
-import { initializeTransactionalContext } from 'typeorm-transactional';
+import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
 
 import { AppModule } from './app';
 
 const bootstrap = async () => {
-  initializeTransactionalContext();
+  initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
 
   const app = await NestFactory.create(AppModule, {
     abortOnError: true,
