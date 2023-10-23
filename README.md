@@ -13,6 +13,7 @@ See [Changelog](#CHANGELOG.md)
   - [It's a fork of typeorm-transactional-cls-hooked for new versions of TypeORM.](#its-a-fork-of-typeorm-transactional-cls-hooked-for-new-versions-of-typeorm)
   - [Installation](#installation)
   - [Initialization](#initialization)
+  - [Usage](#usage)
   - [Using Transactional Decorator](#using-transactional-decorator)
   - [Data Sources](#data-sources)
   - [Transaction Propagation](#transaction-propagation)
@@ -59,7 +60,6 @@ In order to use it, you will first need to initialize the transactional context 
 import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
 
 initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
-```
 ...
 app = express()
 ...
