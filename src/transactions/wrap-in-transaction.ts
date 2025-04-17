@@ -25,6 +25,8 @@ export interface WrapInTransactionOptions {
   isolationLevel?: IsolationLevel;
 
   name?: string | symbol;
+
+  forUpdate?: boolean; // SELECT 쿼리에 FOR UPDATE를 추가하는 옵션
 }
 
 export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => ReturnType<Fn>>(
@@ -52,6 +54,18 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
 
     const runOriginal = async () => {
       Logger.info(`Executing method: ${String(options?.name)} with args: ${JSON.stringify(args)}`);
+      
+      // EntityManager 확장
+      const entityManager = dataSource.manager;
+      if (options?.forUpdate) {
+        const originalCreateQueryBuilder = entityManager.createQueryBuilder.bind(entityManager);
+        entityManager.createQueryBuilder = (...qbArgs:any[]) => {
+          const queryBuilder = originalCreateQueryBuilder(...qbArgs);
+          queryBuilder.setLock('pessimistic_write'); // FOR UPDATE 추가
+          return queryBuilder;
+        };
+      }
+
       const result = await fn.apply(this, args);
 
       // affected rows 체크
