@@ -12,6 +12,7 @@ import { IsolationLevel } from '../enums/isolation-level';
 import { Propagation } from '../enums/propagation';
 import { runInNewHookContext } from '../hooks';
 import { TransactionalError } from '../errors/transactional';
+import { AffectedRowsError } from '../errors/affected-rows-error';
 
 export interface WrapInTransactionOptions {
   /**
@@ -52,6 +53,16 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
     const runOriginal = async () => {
       Logger.info(`Executing method: ${String(options?.name)} with args: ${JSON.stringify(args)}`);
       const result = await fn.apply(this, args);
+
+      // affected rows 체크
+      if (result && typeof result === 'object' && 'affected' in result) {
+        const affectedRows = result.affected;
+        if (affectedRows === 0) {
+          Logger.error(`No rows affected for method: ${String(options?.name)}`);
+          throw new AffectedRowsError(`No rows were affected by the operation in method: ${String(options?.name)}`);
+        }
+      }
+
       Logger.info(`Method executed successfully: ${String(options?.name)}`);
       return result;
     };
