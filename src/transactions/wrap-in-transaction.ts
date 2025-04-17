@@ -29,8 +29,7 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
   fn: Fn,
   options?: WrapInTransactionOptions,
 ) => {
-  // eslint-disable-next-line func-style
-  function wrapper(this: unknown, ...args: unknown[]) {
+  async function wrapper(this: unknown, ...args: unknown[]) {
     const context = getTransactionalContext();
     if (!context) {
       throw new Error(
@@ -39,7 +38,6 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
     }
 
     const connectionName = options?.connectionName ?? 'default';
-
     const dataSource = getDataSourceByName(connectionName);
     if (!dataSource) {
       throw new Error(
@@ -50,16 +48,15 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
     const propagation = options?.propagation ?? Propagation.REQUIRED;
     const isolationLevel = options?.isolationLevel;
 
-    const runOriginal = () => fn.apply(this, args);
-    const runWithNewHook = () => runInNewHookContext(context, runOriginal);
+    const runOriginal = async () => await fn.apply(this, args);
+    const runWithNewHook = async () => await runInNewHookContext(context, runOriginal);
 
-    const runWithNewTransaction = () => {
+    const runWithNewTransaction = async () => {
       const transactionCallback = async (entityManager: EntityManager) => {
         setEntityManagerByDataSourceName(context, connectionName, entityManager);
 
         try {
           const result = await runOriginal();
-
           return result;
         } finally {
           setEntityManagerByDataSourceName(context, connectionName, null);
@@ -67,17 +64,17 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
       };
 
       if (isolationLevel) {
-        return runInNewHookContext(context, () => {
+        return await runInNewHookContext(context, () => {
           return dataSource.transaction(isolationLevel, transactionCallback);
         });
       } else {
-        return runInNewHookContext(context, () => {
+        return await runInNewHookContext(context, () => {
           return dataSource.transaction(transactionCallback);
         });
       }
     };
 
-    return context.run(async () => {
+    return await context.run(async () => {
       const currentTransaction = getEntityManagerByDataSourceName(context, connectionName);
       switch (propagation) {
         case Propagation.MANDATORY:
@@ -86,11 +83,10 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
               "No existing transaction found for transaction marked with propagation 'MANDATORY'",
             );
           }
-
-          return runOriginal();
+          return await runOriginal();
 
         case Propagation.NESTED:
-          return runWithNewTransaction();
+          return await runWithNewTransaction();
 
         case Propagation.NEVER:
           if (currentTransaction) {
@@ -98,32 +94,28 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
               "Found an existing transaction, transaction marked with propagation 'NEVER'",
             );
           }
-
-          return runWithNewHook();
+          return await runWithNewHook();
 
         case Propagation.NOT_SUPPORTED:
           if (currentTransaction) {
             setEntityManagerByDataSourceName(context, connectionName, null);
             const result = await runWithNewHook();
             setEntityManagerByDataSourceName(context, connectionName, currentTransaction);
-
             return result;
           }
-
-          return runOriginal();
+          return await runOriginal();
 
         case Propagation.REQUIRED:
           if (currentTransaction) {
-            return runOriginal();
+            return await runOriginal();
           }
-
-          return runWithNewTransaction();
+          return await runWithNewTransaction();
 
         case Propagation.REQUIRES_NEW:
-          return runWithNewTransaction();
+          return await runWithNewTransaction();
 
         case Propagation.SUPPORTS:
-          return currentTransaction ? runOriginal() : runWithNewHook();
+          return currentTransaction ? await runOriginal() : await runWithNewHook();
       }
     });
   }
