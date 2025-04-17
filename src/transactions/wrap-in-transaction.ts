@@ -6,6 +6,7 @@ import {
   getTransactionalContext,
   setEntityManagerByDataSourceName,
 } from '../common';
+import { Logger } from '../common/logger'; // 가상의 로거 유틸리티
 
 import { IsolationLevel } from '../enums/isolation-level';
 import { Propagation } from '../enums/propagation';
@@ -48,7 +49,13 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
     const propagation = options?.propagation ?? Propagation.REQUIRED;
     const isolationLevel = options?.isolationLevel;
 
-    const runOriginal = async () => await fn.apply(this, args);
+    const runOriginal = async () => {
+      Logger.info(`Executing method: ${String(options?.name)} with args: ${JSON.stringify(args)}`);
+      const result = await fn.apply(this, args);
+      Logger.info(`Method executed successfully: ${String(options?.name)}`);
+      return result;
+    };
+
     const runWithNewHook = async () => await runInNewHookContext(context, runOriginal);
 
     const runWithNewTransaction = async () => {
@@ -56,8 +63,13 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
         setEntityManagerByDataSourceName(context, connectionName, entityManager);
 
         try {
+          Logger.info(`Starting new transaction for method: ${String(options?.name)}`);
           const result = await runOriginal();
+          Logger.info(`Transaction committed for method: ${String(options?.name)}`);
           return result;
+        } catch (error) {
+          Logger.error(`Transaction rolled back for method: ${String(options?.name)} due to error: ${error.message}`);
+          throw error;
         } finally {
           setEntityManagerByDataSourceName(context, connectionName, null);
         }
