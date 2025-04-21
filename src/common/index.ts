@@ -12,6 +12,7 @@ import { TypeOrmUpdatedPatchError } from '../errors/typeorm-updated-patch';
 import { StorageDriver } from '../storage/driver/interface';
 import { isDataSource } from '../utils';
 import { storage } from '../storage';
+import '../common/typeorm-extensions';
 
 export type DataSourceName = string | 'default';
 
