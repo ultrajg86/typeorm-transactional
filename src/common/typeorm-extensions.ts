@@ -45,7 +45,6 @@ import {
     partialEntity: QueryDeepPartialEntity<any>,
   ) {
     const result: UpdateResult = await this.update(criteria, partialEntity);
-    console.log(result);
     if (result.affected === 0) {
       throw new Error('Update operation failed: No rows were affected.');
     }
