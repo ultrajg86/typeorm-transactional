@@ -35,10 +35,10 @@ Install the library and its required dependencies:
 
 ```shell
 # Using npm
-npm install --save typeorm-transactional typeorm reflect-metadata
+npm install --save typeorm-transactional-extension typeorm reflect-metadata
 
 # Using yarn
-yarn add typeorm-transactional typeorm reflect-metadata
+yarn add typeorm-transactional-extension typeorm reflect-metadata
 ```
 
 > **Note**: Ensure `reflect-metadata` is imported globally in your application. See [TypeORM Installation Guide](https://github.com/typeorm/typeorm#installation).
@@ -50,7 +50,7 @@ yarn add typeorm-transactional typeorm reflect-metadata
 Before using the library, initialize the transactional context **before your application starts**:
 
 ```typescript
-import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
+import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional-extension';
 
 initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
 ```
@@ -59,7 +59,7 @@ For example, in an Express app:
 
 ```typescript
 import express from 'express';
-import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
+import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional-extension';
 
 initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
 
@@ -78,7 +78,7 @@ const app = express();
 Use the `@Transactional()` decorator to make service methods transactional:
 
 ```typescript
-import { Transactional } from 'typeorm-transactional';
+import { Transactional } from 'typeorm-transactional-extension';
 
 export class PostService {
   constructor(private readonly repository: PostRepository) {}
@@ -123,7 +123,7 @@ To use transactions with TypeORM entities, register your `DataSource` using `add
 
 ```typescript
 import { DataSource } from 'typeorm';
-import { addTransactionalDataSource } from 'typeorm-transactional';
+import { addTransactionalDataSource } from 'typeorm-transactional-extension';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -183,7 +183,7 @@ Use hooks to execute logic during transaction lifecycle events:
 Example:
 
 ```typescript
-import { runOnTransactionCommit } from 'typeorm-transactional';
+import { runOnTransactionCommit } from 'typeorm-transactional-extension';
 
 @Transactional()
 async createPost(id: number, message: string): Promise<Post> {
@@ -205,7 +205,7 @@ async createPost(id: number, message: string): Promise<Post> {
 To mock `@Transactional` in unit tests (e.g., with Jest):
 
 ```typescript
-jest.mock('typeorm-transactional', () => ({
+jest.mock('typeorm-transactional-extension', () => ({
   Transactional: () => () => ({}),
 }));
 ```
