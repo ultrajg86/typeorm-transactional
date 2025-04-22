@@ -1,447 +1,356 @@
-
 # Typeorm Transactional
+
 [![npm version](http://img.shields.io/npm/v/typeorm-transactional.svg?style=flat)](https://npmjs.org/package/typeorm-transactional "View this project on npm")
 
-## It's a fork of [typeorm-transactional-cls-hooked](https://github.com/odavid/typeorm-transactional-cls-hooked) for new versions of TypeORM.
+## Overview
 
+`typeorm-transactional` is a fork of [typeorm-transactional-cls-hooked](https://github.com/odavid/typeorm-transactional-cls-hooked) designed for newer versions of TypeORM. It provides a `@Transactional` decorator and utilities to manage transactions seamlessly using [AsyncLocalStorage (ALS)](https://nodejs.org/api/async_context.html#class-asynclocalstorage) or [cls-hooked](https://www.npmjs.com/package/cls-hooked).
 
-A `Transactional` Method Decorator for [typeorm](http://typeorm.io/) that uses [ALS](https://nodejs.org/api/async_context.html#class-asynclocalstorage) or [cls-hooked](https://www.npmjs.com/package/cls-hooked) to handle and propagate transactions between different repositories and service methods.
+### Key Features
+- Simplifies transaction management in TypeORM.
+- Supports multiple `DataSource` instances.
+- Provides hooks for transaction lifecycle events.
+- Compatible with modern TypeORM APIs (`DataSource` instead of `Connection`).
 
-See [Changelog](#CHANGELOG.md)
+---
 
-- [Typeorm Transactional](#typeorm-transactional)
-  - [It's a fork of typeorm-transactional-cls-hooked for new versions of TypeORM.](#its-a-fork-of-typeorm-transactional-cls-hooked-for-new-versions-of-typeorm)
-  - [Installation](#installation)
-  - [Initialization](#initialization)
-  - [Usage](#usage)
-  - [Using Transactional Decorator](#using-transactional-decorator)
+## Table of Contents
+- [Installation](#installation)
+- [Initialization](#initialization)
+- [Usage](#usage)
+  - [Transactional Decorator](#transactional-decorator)
   - [Data Sources](#data-sources)
   - [Transaction Propagation](#transaction-propagation)
   - [Isolation Levels](#isolation-levels)
-  - [Hooks](#hooks)
-  - [Unit Test Mocking](#unit-test-mocking)
-  - [API](#api)
-    - [Library Options](#library-options)
-    - [Transaction Options](#transaction-options)
-    - [Storage Driver](#storage-driver)
-    - [initializeTransactionalContext(options): void](#initializetransactionalcontextoptions-void)
-    - [addTransactionalDataSource(input): DataSource](#addtransactionaldatasourceinput-datasource)
-    - [runInTransaction(fn: Callback, options?: Options): Promise\<...\>](#runintransactionfn-callback-options-options-promise)
-    - [wrapInTransaction(fn: Callback, options?: Options): WrappedFunction](#wrapintransactionfn-callback-options-options-wrappedfunction)
-    - [runOnTransactionCommit(cb: Callback): void](#runontransactioncommitcb-callback-void)
-    - [runOnTransactionRollback(cb: Callback): void](#runontransactionrollbackcb-callback-void)
-    - [runOnTransactionComplete(cb: Callback): void](#runontransactioncompletecb-callback-void)
+- [Hooks](#hooks)
+- [Unit Test Mocking](#unit-test-mocking)
+- [API Reference](#api-reference)
+- [Custom Extensions](#custom-extensions)
+
+---
+
 ## Installation
 
-```shell
-## npm
-npm install --save typeorm-transactional
-
-## Needed dependencies
-npm install --save typeorm reflect-metadata
-```
-
-Or
+Install the library and its required dependencies:
 
 ```shell
-yarn add typeorm-transactional
+# Using npm
+npm install --save typeorm-transactional typeorm reflect-metadata
 
-## Needed dependencies
-yarn add typeorm reflect-metadata
+# Using yarn
+yarn add typeorm-transactional typeorm reflect-metadata
 ```
 
-> **Note**: You will need to import `reflect-metadata` somewhere in the global place of your app - https://github.com/typeorm/typeorm#installation
+> **Note**: Ensure `reflect-metadata` is imported globally in your application. See [TypeORM Installation Guide](https://github.com/typeorm/typeorm#installation).
+
+---
 
 ## Initialization
 
-In order to use it, you will first need to initialize the transactional context before your application is started
+Before using the library, initialize the transactional context **before your application starts**:
 
 ```typescript
 import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
 
 initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
-...
-app = express()
-...
 ```
+
+For example, in an Express app:
+
+```typescript
+import express from 'express';
+import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
+
+initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
+
+const app = express();
+// Your app setup here
+```
+
+> **Important**: Call `initializeTransactionalContext` **before** initializing your application context.
+
 ---
-**IMPORTANT NOTE**
-
-Calling [initializeTransactionalContext](#initialization) must happen BEFORE any application context is initialized!
-
 
 ## Usage
 
-New versions of TypeORM use `DataSource` instead of `Connection`, so most of the API has been changed and the old API has become deprecated.
+### Transactional Decorator
 
-To be able to use TypeORM entities in transactions, you must first add a DataSource using the `addTransactionalDataSource` function:
+Use the `@Transactional()` decorator to make service methods transactional:
 
 ```typescript
-import { DataSource } from 'typeorm';
-import { initializeTransactionalContext, addTransactionalDataSource, StorageDriver } from 'typeorm-transactional';
-...
-const dataSource = new DataSource({
-	  type: 'postgres',
-    host: 'localhost',
-    port: 5435,
-    username: 'postgres',
-    password: 'postgres'
-});
-...
+import { Transactional } from 'typeorm-transactional';
 
-initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
-addTransactionalDataSource(dataSource);
+export class PostService {
+  constructor(private readonly repository: PostRepository) {}
 
-...
+  @Transactional()
+  async createPost(id: number, message: string): Promise<Post> {
+    const post = this.repository.create({ id, message });
+    return this.repository.save(post);
+  }
+}
 ```
 
-Example for `Nest.js`:
+#### Advanced Example
+
+You can also use `DataSource` or `EntityManager` objects within transactions:
 
 ```typescript
-// main.ts
+export class PostService {
+  constructor(
+    private readonly repository: PostRepository,
+    private readonly dataSource: DataSource
+  ) {}
 
-import { NestFactory } from '@nestjs/core';
-import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
+  @Transactional()
+  async createAndFetchPost(id: number, message: string): Promise<Post> {
+    const post = this.repository.create({ id, message });
+    await this.repository.save(post);
 
-import { AppModule } from './app';
-
-const bootstrap = async () => {
-  initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
-
-  const app = await NestFactory.create(AppModule, {
-    abortOnError: true,
-  });
-
-  await app.listen(3000);
-};
-
-bootstrap();
+    return this.dataSource
+      .createQueryBuilder(Post, 'p')
+      .where('id = :id', { id })
+      .getOne();
+  }
+}
 ```
 
+---
+
+### Data Sources
+
+To use transactions with TypeORM entities, register your `DataSource` using `addTransactionalDataSource`:
 
 ```typescript
-// app.module.ts
-
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 
-@Module({
-	imports: [
-	   TypeOrmModule.forRootAsync({
-	     useFactory() {
-	       return {
-	         type: 'postgres',
-	         host: 'localhost',
-	         port: 5435,
-	         username: 'postgres',
-	         password: 'postgres',
-	         synchronize: true,
-	         logging: false,
-	       };
-	     },
-	     async dataSourceFactory(options) {
-	       if (!options) {
-	         throw new Error('Invalid options passed');
-	       }
+const dataSource = new DataSource({
+  type: 'postgres',
+  host: 'localhost',
+  port: 5432,
+  username: 'postgres',
+  password: 'postgres',
+});
 
-	       return addTransactionalDataSource(new DataSource(options));
-	     },
-	   }),
-
-	   ...
-	 ],
-	 providers: [...],
-	 exports: [...],
-})
-class AppModule {}
+addTransactionalDataSource(dataSource);
 ```
 
-Unlike `typeorm-transactional-cls-hooked`, you do not need to use `BaseRepository`or otherwise define repositories.
-
-You can also use this library with custom TypeORM repositories. You can read more about them [here](https://stackoverflow.com/a/72887316/19150323) and [here](https://orkhan.gitbook.io/typeorm/docs/custom-repository).
-
-**NOTE**:  You can [add](#data-sources) multiple `DataSource` if you need it
-
-
-## Using Transactional Decorator
-
-- Every service method that needs to be transactional, need to use the `@Transactional()` decorator
-- The decorator can take a `connectionName` as argument (by default it is `default`) to specify [the data source ](#data-sources) to be user
-- The decorator can take an optional `propagation` as argument to define the [propagation behaviour](#transaction-propagation)
-- The decorator can take an optional `isolationLevel` as argument to define the [isolation level](#isolation-levels) (by default it will use your database driver's default isolation level)
-
-```typescript
-export class PostService {
-  constructor(readonly repository: PostRepository)
-
-  @Transactional() // Will open a transaction if one doesn't already exist
-  async createPost(id, message): Promise<Post> {
-    const post = this.repository.create({ id, message })
-    return this.repository.save(post)
-  }
-}
-```
-
-You can also use `DataSource`/`EntityManager` objects together with repositories in transactions:
-
-```typescript
-export class PostService {
-  constructor(readonly repository: PostRepository, readonly dataSource: DataSource)
-
-  @Transactional() // Will open a transaction if one doesn't already exist
-  async createAndGetPost(id, message): Promise<Post> {
-    const post = this.repository.create({ id, message })
-
-    await this.repository.save(post)
-
-    return dataSource.createQueryBuilder(Post, 'p').where('id = :id', id).getOne();
-  }
-}
-```
-
-## Data Sources
-
-In new versions of `TypeORM` the `name` property in `Connection` / `DataSource` is deprecated, so to work conveniently with multiple `DataSource` the function  `addTransactionalDataSource` allows you to specify custom the name:
+For multiple `DataSource` instances, specify a custom name:
 
 ```typescript
 addTransactionalDataSource({
-	name: 'second-data-source',
-	dataSource: new DataSource(...)
+  name: 'secondary',
+  dataSource: new DataSource({ /* config */ }),
 });
 ```
 
-If you don't specify a name, it defaults to `default`.
+---
 
-Now, you can use this `name` in API by passing the `connectionName` property as options to explicitly define which `Data Source` you want to use:
+### Transaction Propagation
 
-```typescript
-  @Transactional({ connectionName: 'second-data-source' })
-  async fn() { ... }
-```
+Propagation defines how transactions interact with existing ones. Supported options:
 
-OR
+- `MANDATORY`: Requires an existing transaction; throws an error if none exists.
+- `NESTED`: Creates a nested transaction if one exists; otherwise behaves like `REQUIRED`.
+- `NEVER`: Executes non-transactionally; throws an error if a transaction exists.
+- `NOT_SUPPORTED`: Executes non-transactionally; suspends the current transaction if one exists.
+- `REQUIRED` (default): Uses the current transaction or creates a new one if none exists.
+- `REQUIRES_NEW`: Always creates a new transaction, suspending any existing one.
+- `SUPPORTS`: Uses the current transaction if one exists; otherwise executes non-transactionally.
 
+---
 
-```typescript
-runInTransaction(() => {
-  // ...
-}, { connectionName: 'second-data-source' })
-```
+### Isolation Levels
 
-## Transaction Propagation
+Isolation levels control how transactions interact with each other. Supported levels:
 
-The following propagation options can be specified:
+- `READ_UNCOMMITTED`: Allows dirty reads, non-repeatable reads, and phantom reads.
+- `READ_COMMITTED`: Prevents dirty reads; allows non-repeatable reads and phantom reads.
+- `REPEATABLE_READ`: Prevents dirty and non-repeatable reads; allows phantom reads.
+- `SERIALIZABLE`: Prevents dirty reads, non-repeatable reads, and phantom reads.
 
-- `MANDATORY` - Support a current transaction, throw an exception if none exists.
-- `NESTED` - Execute within a nested transaction if a current transaction exists, behave like `REQUIRED` else.
-- `NEVER` - Execute non-transactionally, throw an exception if a transaction exists.
-- `NOT_SUPPORTED` - Execute non-transactionally, suspend the current transaction if one exists.
-- `REQUIRED` (default behaviour) - Support a current transaction, create a new one if none exists.
-- `REQUIRES_NEW` - Create a new transaction, and suspend the current transaction if one exists.
-- `SUPPORTS` - Support a current transaction, execute non-transactionally if none exists.
-
-## Isolation Levels
-
-The following isolation level options can be specified:
-
-- `READ_UNCOMMITTED` - A constant indicating that dirty reads, non-repeatable reads and phantom reads can occur.
-- `READ_COMMITTED` - A constant indicating that dirty reads are prevented; non-repeatable reads and phantom reads can occur.
-- `REPEATABLE_READ` - A constant indicating that dirty reads and non-repeatable reads are prevented; phantom reads can occur.
-- `SERIALIZABLE` = A constant indicating that dirty reads, non-repeatable reads and phantom reads are prevented.
-
-**NOTE**: If a transaction already exist and a method is decorated with `@Transactional` and `propagation` *does not equal* to `REQUIRES_NEW`, then the declared `isolationLevel` value will *not* be taken into account.
+---
 
 ## Hooks
 
-Because you hand over control of the transaction creation to this library, there is no way for you to know whether or not the current transaction was successfully persisted to the database.
+Use hooks to execute logic during transaction lifecycle events:
 
-To circumvent that, we expose three helper methods that allow you to hook into the transaction lifecycle and take appropriate action after a commit/rollback.
+- `runOnTransactionCommit(cb)`: Executes after a transaction commits.
+- `runOnTransactionRollback(cb)`: Executes after a transaction rolls back.
+- `runOnTransactionComplete(cb)`: Executes after a transaction completes (success or failure).
 
-- `runOnTransactionCommit(cb)` takes a callback to be executed after the current transaction was successfully committed
-- `runOnTransactionRollback(cb)` takes a callback to be executed after the current transaction rolls back. The callback gets the error that initiated the rollback as a parameter.
-- `runOnTransactionComplete(cb)` takes a callback to be executed at the completion of the current transactional context. If there was an error, it gets passed as an argument.
-
-
+Example:
 
 ```typescript
-export class PostService {
-    constructor(readonly repository: PostRepository, readonly events: EventService) {}
+import { runOnTransactionCommit } from 'typeorm-transactional';
 
-    @Transactional()
-    async createPost(id, message): Promise<Post> {
-        const post = this.repository.create({ id, message });
-        const result = await this.repository.save(post);
+@Transactional()
+async createPost(id: number, message: string): Promise<Post> {
+  const post = this.repository.create({ id, message });
+  const result = await this.repository.save(post);
 
-        runOnTransactionCommit(() => this.events.emit('post created'));
+  runOnTransactionCommit(() => {
+    console.log('Transaction committed!');
+  });
 
-        return result;
-    }
+  return result;
 }
 ```
 
-## Unit Test Mocking
-`@Transactional` can be mocked to prevent running any of the transactional code in unit tests.
+---
 
-This can be accomplished in Jest with:
+## Unit Test Mocking
+
+To mock `@Transactional` in unit tests (e.g., with Jest):
 
 ```typescript
 jest.mock('typeorm-transactional', () => ({
   Transactional: () => () => ({}),
 }));
 ```
-Repositories, services, etc. can be mocked as usual.
 
-## API
+---
 
-### Library Options
+## API Reference
 
-```typescript
-{
-  storageDriver?: StorageDriver,
-  maxHookHandlers?: number
-}
-```
-- `storageDriver` - Determines which [underlying mechanism](#storage-driver) (like Async Local Storage or cls-hooked) the library should use for handling and propagating transactions. By default, it's `StorageDriver.CLS_HOOKED`.
-- `maxHookHandlers` - Controls how many hooks (`commit`, `rollback`, `complete`) can be used simultaneously. If you exceed the number of hooks of same type, you get a warning. This is a useful to find possible memory leaks. You can set this options to `0` or `Infinity` to indicate an unlimited number of listeners. By default, it's `10`.
+### `initializeTransactionalContext(options): void`
 
-### Transaction Options
+Initializes the transactional context. Options:
 
 ```typescript
 {
-  connectionName?: string;
-  isolationLevel?: IsolationLevel;
-  propagation?: Propagation;
+  storageDriver?: StorageDriver;
+  maxHookHandlers?: number;
 }
 ```
 
-- `connectionName`-  DataSource name to use for this transactional context  ([the data sources](#data-sources))
-- `isolationLevel`- isolation level for transactional context ([isolation levels](#isolation-levels) )
-- `propagation`-  propagation behaviors for nest transactional contexts ([propagation behaviors](#transaction-propagation))
+- `storageDriver`: Mechanism for transaction propagation (`AUTO`, `CLS_HOOKED`, or `ASYNC_LOCAL_STORAGE`).
+- `maxHookHandlers`: Maximum number of hooks allowed (default: `10`).
 
-### Storage Driver
+---
 
-Option that determines which underlying mechanism the library should use for handling and propagating transactions.
+### `addTransactionalDataSource(input): DataSource`
 
-The possible variants:
-
-- `AUTO` - Automatically selects the appropriate storage mechanism based on the Node.js version, using `AsyncLocalStorage` for Node.js versions 16 and above, and defaulting to `cls-hooked` for earlier versions.
-- `CLS_HOOKED` - Utilizes the `cls-hooked` package to provide context storage, supporting both legacy Node.js versions with AsyncWrap for versions below 8.2.1, and using `async_hooks` for later versions.
-- `ASYNC_LOCAL_STORAGE` - Uses the built-in `AsyncLocalStorage` feature, available from Node.js version 16 onwards,
-
-> ⚠️ **WARNING:**  Currently, we use `CLS_HOOKED` by default for backward compatibility. However, in the next major release, this default will be switched to `AUTO`.
+Registers a `DataSource` for transactional use. Example:
 
 ```typescript
-import { StorageDriver } from 'typeorm-transactional'
-
-initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
+addTransactionalDataSource(new DataSource({ /* config */ }));
 ```
 
-### initializeTransactionalContext(options): void
+---
 
-Initialize transactional context.
+### `runInTransaction(fn, options?): Promise<any>`
+
+Executes a function within a transactional context. Example:
 
 ```typescript
-initializeTransactionalContext(options?: TypeormTransactionalOptions);
+await runInTransaction(async () => {
+  // Your transactional logic here
+}, { propagation: 'REQUIRES_NEW' });
 ```
 
-Optionally, you can set some [options](#library-options).
+---
 
-### addTransactionalDataSource(input): DataSource
+### `wrapInTransaction(fn, options?): WrappedFunction`
 
-Add TypeORM `DataSource` to transactional context.
+Wraps a function in a transactional context. Example:
 
 ```typescript
-addTransactionalDataSource(new DataSource(...));
-
-addTransactionalDataSource({ name: 'default', dataSource: new DataSource(...), patch: true });
+const wrappedFn = wrapInTransaction(async () => {
+  // Your logic here
+});
+await wrappedFn();
 ```
 
-### runInTransaction(fn: Callback, options?: Options): Promise<...>
+---
 
-Run code in transactional context.
+### `runOnTransactionCommit(cb): void`
 
-```typescript
-...
+Registers a callback to execute after a transaction commits.
 
-runInTransaction(() => {
-	...
+---
 
-	const user = this.usersRepo.update({ id: 1000 }, { state: action });
+### `runOnTransactionRollback(cb): void`
 
-	...
-}, { propagation: Propagation.REQUIRES_NEW });
+Registers a callback to execute after a transaction rolls back.
 
-...
-```
+---
 
-### wrapInTransaction(fn: Callback, options?: Options): WrappedFunction
+### `runOnTransactionComplete(cb): void`
 
-Wrap function in transactional context
+Registers a callback to execute after a transaction completes.
 
-```typescript
-...
+---
 
-const updateUser = wrapInTransaction(() => {
-	...
+## Custom Extensions
 
-	const user = this.usersRepo.update({ id: 1000 }, { state: action });
+This library also provides custom extensions for TypeORM's `Repository` to simplify common database operations. These extensions include:
 
-	...
-}, { propagation: Propagation.NEVER });
+### Extended Repository Methods
 
-...
+1. **`insertOrFail`**  
+   Inserts an entity and throws an error if no identifiers are returned.
 
-await updateUser();
+2. **`updateOrFail`**  
+   Updates an entity and throws an error if no rows are affected.
 
-...
-```
+3. **`deleteOrFail`**  
+   Deletes an entity and throws an error if no rows are affected.
 
-### runOnTransactionCommit(cb: Callback): void
+### Usage
 
-Takes a callback to be executed after the current transaction was successfully committed
+To use these extensions, simply import and use the `Repository` methods as usual. The extensions are automatically applied.
+
+#### Example
 
 ```typescript
-  @Transactional()
-  async createPost(id, message): Promise<Post> {
-      const post = this.repository.create({ id, message });
-      const result = await this.repository.save(post);
+import { Repository } from 'typeorm';
+import { MyEntity } from './entities/my-entity';
 
-      runOnTransactionCommit(() => this.events.emit('post created'));
+export class MyService {
+  constructor(private readonly repository: Repository<MyEntity>) {}
 
-      return result;
+  async createEntity(data: Partial<MyEntity>): Promise<number> {
+    return this.repository.insertOrFail(data);
   }
+
+  async updateEntity(id: number, data: Partial<MyEntity>): Promise<void> {
+    await this.repository.updateOrFail({ id }, data);
+  }
+
+  async deleteEntity(id: number): Promise<void> {
+    await this.repository.deleteOrFail({ id });
+  }
+}
 ```
 
-### runOnTransactionRollback(cb: Callback): void
+### Method Details
 
-Takes a callback to be executed after the current transaction rolls back. The callback gets the error that initiated the rollback as a parameter.
+#### `insertOrFail`
+
+Inserts an entity and ensures that the operation returns identifiers. If no identifiers are returned, an error is thrown.
 
 ```typescript
-  @Transactional()
-  async createPost(id, message): Promise<Post> {
-      const post = this.repository.create({ id, message });
-      const result = await this.repository.save(post);
-
-      runOnTransactionRollback((e) => this.events.emit(e));
-
-      return result;
-  }
+repository.insertOrFail(entity, 'Custom error message if insert fails');
 ```
 
-### runOnTransactionComplete(cb: Callback): void
+#### `updateOrFail`
 
-Takes a callback to be executed at the completion of the current transactional context. If there was an error, it gets passed as an argument.
+Updates an entity based on the given criteria. If no rows are affected, an error is thrown.
 
 ```typescript
-  @Transactional()
-  async createPost(id, message): Promise<Post> {
-      const post = this.repository.create({ id, message });
-      const result = await this.repository.save(post);
-
-      runOnTransactionComplete((e) => this.events.emit(e ? e : 'post created'));
-
-      return result;
-  }
+repository.updateOrFail(criteria, partialEntity, 'Custom error message if update fails');
 ```
+
+#### `deleteOrFail`
+
+Deletes an entity based on the given criteria. If no rows are affected, an error is thrown.
+
+```typescript
+repository.deleteOrFail(criteria, 'Custom error message if delete fails');
+```
+
+---
+
+For more details, refer to the [API Documentation](#api-reference).

@@ -1,12 +1,12 @@
 {
   "name": "typeorm-transactional-extension",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "A Transactional Method Decorator for typeorm that uses cls-hooked to handle and propagate transactions between different repositories and service methods. Inpired by Spring Trasnactional Annotation and Sequelize CLS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Aliheym/typeorm-transactional"
+    "url": "https://github.com/ultrajg86/typeorm-transactional-extension"
   },
   "author": {
     "name": "lukas",
