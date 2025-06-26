@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: test
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "test", "-U", "postgres"]
+      test: ['CMD-SHELL', 'pg_isready', '-d', 'test', '-U', 'postgres']
       interval: 1s
       timeout: 5s
       retries: 10
@@ -25,7 +25,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: test
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "test", "-U", "postgres"]
+      test: ['CMD-SHELL', 'pg_isready', '-d', 'test', '-U', 'postgres']
       interval: 1s
       timeout: 5s
       retries: 10

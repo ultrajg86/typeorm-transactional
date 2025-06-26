@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, InsertResult, Repository } from 'typeorm';
 import {
   addTransactionalDataSource,
   initializeTransactionalContext,
@@ -42,6 +42,7 @@ addTransactionalDataSource(dataSource);
 
 beforeAll(async () => {
   await dataSource.initialize();
+  jest.setTimeout(100000);
 });
 
 afterAll(async () => {
@@ -627,6 +628,66 @@ describe('Transactional', () => {
           expect(totalUsers2).toBe(0);
         },
         { isolationLevel: IsolationLevel.REPEATABLE_READ },
+      );
+    });
+  });
+});
+
+describe('Repository Extensions', () => {
+  let userRepository: Repository<User>;
+  let counterRepository: Repository<Counter>;
+
+  beforeAll(async () => {
+    userRepository = dataSource.getRepository(User);
+    counterRepository = dataSource.getRepository(Counter);
+  });
+
+  describe('insertOrFail', () => {
+    it('inserts an entity successfully', async () => {
+      const user = new User('John Doe', 100);
+      const result = await userRepository.insertOrFail(user);
+      expect(result).toHaveProperty('name');
+      expect(result.name).toBe(user.name);
+    });
+
+    it('throws an error if insert fails', async () => {
+      // insert 함수가 빈 identifiers 리턴하도록 mock
+      jest.spyOn(userRepository, 'insert').mockResolvedValueOnce({
+        identifiers: [],
+        generatedMaps: [],
+        raw: null,
+      } as InsertResult);
+
+      await expect(userRepository.insertOrFail(null as any)).rejects.toThrow(
+        'Insert operation failed: No identifiers returned.',
+      );
+    });
+  });
+
+  describe('updateOrFail', () => {
+    it('updates an entity successfully', async () => {
+      const user = await userRepository.save(new User('John Doe', 100));
+      const [_, affected] = await userRepository.updateOrFail({ name: user.name }, { money: 200 });
+      expect(affected).toBe(1);
+    });
+
+    it('throws an error if no rows are affected', async () => {
+      await expect(userRepository.updateOrFail({ name: '' }, { money: 200 })).rejects.toThrow(
+        'Update operation failed: No rows were affected.',
+      );
+    });
+  });
+
+  describe('deleteOrFail', () => {
+    it('deletes an entity successfully', async () => {
+      const user = await userRepository.save(new User('John Doe', 100));
+      const [_, affected] = await userRepository.deleteOrFail({ name: user.name });
+      expect(affected).toBe(1);
+    });
+
+    it('throws an error if no rows are affected', async () => {
+      await expect(userRepository.deleteOrFail({ name: '' })).rejects.toThrow(
+        'Delete operation failed: No rows were affected.',
       );
     });
   });

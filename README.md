@@ -1,12 +1,13 @@
 # Typeorm Transactional
 
-[![npm version](http://img.shields.io/npm/v/typeorm-transactional.svg?style=flat)](https://npmjs.org/package/typeorm-transactional "View this project on npm")
+[![npm version](http://img.shields.io/npm/v/typeorm-transactional.svg?style=flat)](https://npmjs.org/package/typeorm-transactional 'View this project on npm')
 
 ## Overview
 
 `typeorm-transactional` is a fork of [typeorm-transactional-cls-hooked](https://github.com/odavid/typeorm-transactional-cls-hooked) designed for newer versions of TypeORM. It provides a `@Transactional` decorator and utilities to manage transactions seamlessly using [AsyncLocalStorage (ALS)](https://nodejs.org/api/async_context.html#class-asynclocalstorage) or [cls-hooked](https://www.npmjs.com/package/cls-hooked).
 
 ### Key Features
+
 - Simplifies transaction management in TypeORM.
 - Supports multiple `DataSource` instances.
 - Provides hooks for transaction lifecycle events.
@@ -15,6 +16,7 @@
 ---
 
 ## Table of Contents
+
 - [Installation](#installation)
 - [Initialization](#initialization)
 - [Usage](#usage)
@@ -99,7 +101,7 @@ You can also use `DataSource` or `EntityManager` objects within transactions:
 export class PostService {
   constructor(
     private readonly repository: PostRepository,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
   ) {}
 
   @Transactional()
@@ -107,10 +109,7 @@ export class PostService {
     const post = this.repository.create({ id, message });
     await this.repository.save(post);
 
-    return this.dataSource
-      .createQueryBuilder(Post, 'p')
-      .where('id = :id', { id })
-      .getOne();
+    return this.dataSource.createQueryBuilder(Post, 'p').where('id = :id', { id }).getOne();
   }
 }
 ```
@@ -141,7 +140,9 @@ For multiple `DataSource` instances, specify a custom name:
 ```typescript
 addTransactionalDataSource({
   name: 'secondary',
-  dataSource: new DataSource({ /* config */ }),
+  dataSource: new DataSource({
+    /* config */
+  }),
 });
 ```
 
@@ -235,7 +236,11 @@ Initializes the transactional context. Options:
 Registers a `DataSource` for transactional use. Example:
 
 ```typescript
-addTransactionalDataSource(new DataSource({ /* config */ }));
+addTransactionalDataSource(
+  new DataSource({
+    /* config */
+  }),
+);
 ```
 
 ---
@@ -245,9 +250,12 @@ addTransactionalDataSource(new DataSource({ /* config */ }));
 Executes a function within a transactional context. Example:
 
 ```typescript
-await runInTransaction(async () => {
-  // Your transactional logic here
-}, { propagation: 'REQUIRES_NEW' });
+await runInTransaction(
+  async () => {
+    // Your transactional logic here
+  },
+  { propagation: 'REQUIRES_NEW' },
+);
 ```
 
 ---
