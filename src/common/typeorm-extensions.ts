@@ -7,7 +7,6 @@ import {
   FindOptionsWhere,
   ObjectLiteral,
 } from 'typeorm';
-import { EntityTarget } from 'typeorm/common/EntityTarget';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 declare module 'typeorm' {
